@@ -1,0 +1,66 @@
+# 虚拟环境
+venv/
+.env
+*.env
+
+# 编辑器和 IDE 相关文件
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
+logs/
+
+# 构建和依赖文件
+node_modules/
+dist/
+build/
+
+# 测试和覆盖率报告
+coverage/
+.nyc_output/
+
+# 临时文件
+*.tmp
+*.temp
+.cache/
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Windows 特定文件
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# macOS 特定文件
+.AppleDouble
+.LSOverride
+
+# 站点特定配置文件
+siteback/config/local_settings.py
+sitevue/.env.local
+sitevue/.env.development.local
+sitevue/.env.test.local
+sitevue/.env.production.local
+
+# oneforall
+/oneforall
