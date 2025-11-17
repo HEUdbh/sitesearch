@@ -56,7 +56,7 @@ def run_oneforall_task(task_id, params, tasks_dict):
         }
         
         # 更新任务状态为成功，并记录结果文件路径
-        update_task(task_id, 'success', str(result_path))
+        update_task(task_id, 'completed', str(result_path))
         
     except Exception as e:
         # 记录任务错误

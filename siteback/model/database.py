@@ -73,4 +73,23 @@ def get_task(task_id):
         return dict(zip(columns, row))
     return None
 
+def get_all_tasks():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM task_info ORDER BY id DESC')
+    rows = cursor.fetchall()
+    conn.close()
+    
+    columns = [
+        'id', 'target', 'targets', 'brute', 'dns', 'req', 'port', 'alive',
+        'fmt', 'path', 'takeover', 'status', 'result', 'error'
+    ]
+    
+    tasks = []
+    for row in rows:
+        task_dict = dict(zip(columns, row))
+        tasks.append(task_dict)
+    
+    return tasks
+
 init_db()
