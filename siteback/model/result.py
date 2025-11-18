@@ -117,7 +117,6 @@ def get_task_result(task_id):
         return {
             'success': True,
             'task_id': task_id,
-            'file_path': result_path,
             **result_data
         }
     else:
