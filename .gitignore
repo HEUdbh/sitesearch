@@ -61,6 +61,3 @@ sitevue/.env.local
 sitevue/.env.development.local
 sitevue/.env.test.local
 sitevue/.env.production.local
-
-# oneforall
-/oneforall
