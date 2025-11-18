@@ -33,6 +33,10 @@ def run_oneforall_task(task_id, params, tasks_dict):
             path=params.get('path'),
             takeover=params.get('takeover')
         )
+        
+        # 禁用网络检查，允许在无网络环境下运行
+        ofa.enable_check_network = False
+        
         ofa.config_param()
         ofa.check_param()
         

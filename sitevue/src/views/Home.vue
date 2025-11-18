@@ -152,7 +152,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 
 interface TaskInfo {
   id: string
@@ -200,6 +200,43 @@ const currentTask = ref<TaskInfo | null>(null)
 const progressTasks = ref<ProgressInfo[]>([])
 const progressIntervals = ref<Map<string, number>>(new Map())
 
+// 本地存储键名
+const STORAGE_KEY = 'siteSearch_progressTasks'
+
+// 保存进度信息到本地存储
+const saveProgressToStorage = () => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(progressTasks.value))
+  } catch (error) {
+    console.error('保存进度信息到本地存储失败:', error)
+  }
+}
+
+// 从本地存储加载进度信息
+const loadProgressFromStorage = () => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      const tasks = JSON.parse(stored)
+      progressTasks.value = tasks
+      
+      // 为所有未完成的任务重新启动进度监测
+      tasks.forEach((task: ProgressInfo) => {
+        if (task.status === 'running' || task.status === 'pending') {
+          startProgressMonitoring(task.taskId)
+        }
+      })
+    }
+  } catch (error) {
+    console.error('从本地存储加载进度信息失败:', error)
+  }
+}
+
+// 页面加载时恢复进度信息
+onMounted(() => {
+  loadProgressFromStorage()
+})
+
 const runScan = async () => {
   if (!formData.target) {
     alert('请输入目标域名')
@@ -236,6 +273,7 @@ const runScan = async () => {
     }
     
     progressTasks.value.push(progressInfo)
+    saveProgressToStorage() // 保存到本地存储
     
     // 开始监测进度
     startProgressMonitoring(taskId)
@@ -265,6 +303,7 @@ const fetchTaskProgress = async (taskId: string) => {
           ...progressTasks.value[index],
           ...data
         }
+        saveProgressToStorage() // 保存到本地存储
       }
       
       // 如果任务已完成或失败，停止监测
@@ -308,6 +347,7 @@ const stopProgressMonitoring = (taskId: string) => {
     // 3秒后从进度列表中移除已完成的任务
     setTimeout(() => {
       progressTasks.value = progressTasks.value.filter(task => task.taskId !== taskId)
+      saveProgressToStorage() // 保存到本地存储
     }, 3000)
   }
 }
@@ -361,6 +401,13 @@ const resetForm = () => {
   })
   progressIntervals.value.clear()
   progressTasks.value = []
+  
+  // 清理本地存储
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch (error) {
+    console.error('清理本地存储失败:', error)
+  }
 }
 
 const getStatusText = (status: string) => {

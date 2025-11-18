@@ -8,7 +8,7 @@ const activeMenu = ref('home')
 
 const menuItems = [
   { key: 'home', label: '主页', icon: '🏠', path: '/' },
-  { key: 'tasks', label: '任务信息查询', icon: '📋', path: '/task' }
+  { key: 'tasks', label: '子域名扫描任务信息', icon: '📋', path: '/task' }
 ]
 
 const setActiveMenu = (menuKey: string) => {
@@ -33,7 +33,7 @@ watch(() => route.path, (newPath) => {
     <!-- 侧边栏 -->
     <aside class="sidebar">
       <div class="sidebar-header">
-        <h2>站点搜索系统</h2>
+        <h2>子域名梭哈</h2>
       </div>
       <nav class="sidebar-nav">
         <ul>
