@@ -98,37 +98,51 @@
       </div>
     </div>
     
-    <!-- 下部分：结果显示 -->
-    <div class="result-section">
+    <!-- 下部分：扫描进度显示 -->
+    <div class="progress-section">
       <div class="section-header">
-        <h2>扫描结果</h2>
-        <p v-if="currentTask">任务状态: {{ getStatusText(currentTask.status) }}</p>
+        <h2>扫描进度</h2>
+        <p>实时显示OneForAll扫描任务进度</p>
       </div>
       
-      <div class="result-content">
-        <div v-if="!currentTask" class="empty-state">
-          <p>暂无扫描结果，请先配置参数并开始扫描</p>
+      <div class="progress-content">
+        <div v-if="progressTasks.length === 0" class="empty-state">
+          <p>暂无扫描任务，请先配置参数并开始扫描</p>
         </div>
         
-        <div v-else class="task-info">
-          <div class="task-details">
-            <div class="detail-item">
-              <span class="label">任务ID:</span>
-              <span class="value">{{ currentTask.id }}</span>
+        <div v-else class="progress-list">
+          <div 
+            v-for="task in progressTasks" 
+            :key="task.taskId" 
+            class="progress-item"
+            :class="getProgressStatusClass(task.status)"
+          >
+            <div class="progress-header">
+              <span class="task-id">任务ID: {{ task.taskId }}</span>
+              <span class="progress-status">{{ getProgressDisplayText(task) }}</span>
             </div>
-            <div class="detail-item">
-              <span class="label">状态:</span>
-              <span class="value" :class="getStatusClass(currentTask.status)">
-                {{ getStatusText(currentTask.status) }}
-              </span>
+            
+            <div class="progress-bar-container">
+              <div class="progress-bar" :style="getProgressBarStyle(task.progress_percentage)"></div>
             </div>
-            <div v-if="currentTask.result" class="detail-item">
-              <span class="label">结果文件:</span>
-              <span class="value">{{ currentTask.result }}</span>
-            </div>
-            <div v-if="currentTask.error" class="detail-item">
-              <span class="label">错误信息:</span>
-              <span class="value error">{{ currentTask.error }}</span>
+            
+            <div class="progress-details">
+              <div class="detail-row">
+                <span class="detail-label">当前模块:</span>
+                <span class="detail-value">{{ task.current_module }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">发现子域名:</span>
+                <span class="detail-value">{{ task.subdomains_found }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">已用时间:</span>
+                <span class="detail-value">{{ task.elapsed_time }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">预计剩余:</span>
+                <span class="detail-value">{{ task.estimated_remaining_time }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -159,6 +173,16 @@ interface FormData {
   takeover: boolean
 }
 
+interface ProgressInfo {
+  taskId: string
+  status: string
+  progress_percentage: number
+  current_module: string
+  subdomains_found: number
+  elapsed_time: string
+  estimated_remaining_time: string
+}
+
 const formData = reactive<FormData>({
   target: '',
   brute: true,
@@ -173,6 +197,8 @@ const formData = reactive<FormData>({
 
 const isLoading = ref(false)
 const currentTask = ref<TaskInfo | null>(null)
+const progressTasks = ref<ProgressInfo[]>([])
+const progressIntervals = ref<Map<string, number>>(new Map())
 
 const runScan = async () => {
   if (!formData.target) {
@@ -196,33 +222,123 @@ const runScan = async () => {
     }
     
     const result = await response.json()
+    const taskId = result.task_id
     
-    // 模拟任务信息（实际应该从后端获取）
-    currentTask.value = {
-      id: result.taskId || 'task_' + Date.now(),
+    // 添加进度监测任务
+    const progressInfo: ProgressInfo = {
+      taskId: taskId,
       status: 'running',
-      result: '',
-      error: ''
+      progress_percentage: 0,
+      current_module: '初始化',
+      subdomains_found: 0,
+      elapsed_time: '0s',
+      estimated_remaining_time: '未知'
     }
     
-    // 模拟任务状态更新（实际应该通过WebSocket或轮询获取）
-    setTimeout(() => {
-      if (currentTask.value) {
-        currentTask.value.status = 'success'
-        currentTask.value.result = `/results/scan_${Date.now()}.${formData.fmt}`
-      }
-    }, 3000)
+    progressTasks.value.push(progressInfo)
+    
+    // 开始监测进度
+    startProgressMonitoring(taskId)
     
   } catch (error) {
     console.error('扫描失败:', error)
-    currentTask.value = {
-      id: 'task_' + Date.now(),
-      status: 'failed',
-      error: error instanceof Error ? error.message : '未知错误'
-    }
+    alert('扫描任务提交失败，请检查后端服务是否正常运行')
   } finally {
     isLoading.value = false
   }
+}
+
+// 获取任务进度信息
+const fetchTaskProgress = async (taskId: string) => {
+  try {
+    const response = await fetch(`http://127.0.0.1:5000/api/process?taskid=${taskId}`)
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    const data = await response.json()
+    
+    if (data.success) {
+      // 更新进度数据
+      const index = progressTasks.value.findIndex(task => task.taskId === taskId)
+      if (index !== -1) {
+        progressTasks.value[index] = {
+          ...progressTasks.value[index],
+          ...data
+        }
+      }
+      
+      // 如果任务已完成或失败，停止监测
+      if (data.status === 'completed' || data.status === 'failed') {
+        stopProgressMonitoring(taskId)
+      }
+      
+      return data
+    } else {
+      console.error('获取进度信息失败:', data.error)
+      return null
+    }
+  } catch (error) {
+    console.error('获取进度信息失败:', error)
+    return null
+  }
+}
+
+// 开始监测任务进度
+const startProgressMonitoring = (taskId: string) => {
+  if (!progressIntervals.value.has(taskId)) {
+    // 立即获取一次进度信息
+    fetchTaskProgress(taskId)
+    
+    // 设置定时器，每3秒获取一次进度信息
+    const interval = setInterval(() => {
+      fetchTaskProgress(taskId)
+    }, 3000)
+    
+    progressIntervals.value.set(taskId, interval)
+  }
+}
+
+// 停止监测任务进度
+const stopProgressMonitoring = (taskId: string) => {
+  const interval = progressIntervals.value.get(taskId)
+  if (interval) {
+    clearInterval(interval)
+    progressIntervals.value.delete(taskId)
+    
+    // 3秒后从进度列表中移除已完成的任务
+    setTimeout(() => {
+      progressTasks.value = progressTasks.value.filter(task => task.taskId !== taskId)
+    }, 3000)
+  }
+}
+
+// 获取进度显示文本
+const getProgressDisplayText = (task: ProgressInfo) => {
+  if (task.status === 'completed') {
+    return '✅ 已完成'
+  } else if (task.status === 'failed') {
+    return `❌ 失败: ${task.current_module}`
+  } else if (task.status === 'running') {
+    return `🔄 ${task.current_module} (${task.progress_percentage}%)`
+  } else {
+    return '⏳ 等待中'
+  }
+}
+
+// 获取进度条样式
+const getProgressBarStyle = (percentage: number) => {
+  return { width: `${percentage}%` }
+}
+
+// 获取进度状态样式类
+const getProgressStatusClass = (status: string) => {
+  const classMap: Record<string, string> = {
+    'running': 'progress-running',
+    'completed': 'progress-completed',
+    'failed': 'progress-failed',
+    'pending': 'progress-pending'
+  }
+  return classMap[status] || ''
 }
 
 const resetForm = () => {
@@ -238,6 +354,13 @@ const resetForm = () => {
     takeover: false
   })
   currentTask.value = null
+  
+  // 停止所有进度监测并清空进度任务列表
+  progressIntervals.value.forEach((interval, taskId) => {
+    clearInterval(interval)
+  })
+  progressIntervals.value.clear()
+  progressTasks.value = []
 }
 
 const getStatusText = (status: string) => {
@@ -431,4 +554,126 @@ const getStatusClass = (status: string) => {
 .status-running { color: #3498db; }
 .status-success { color: #27ae60; }
 .status-failed { color: #e74c3c; }
+
+/* 进度监测样式 */
+.progress-section {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.progress-content {
+  min-height: 200px;
+}
+
+.progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.progress-item {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 15px;
+  background: #f8f9fa;
+  transition: all 0.3s ease;
+}
+
+.progress-item.progress-running {
+  border-left: 4px solid #3498db;
+  background: #f0f8ff;
+}
+
+.progress-item.progress-completed {
+  border-left: 4px solid #27ae60;
+  background: #f0fff4;
+}
+
+.progress-item.progress-failed {
+  border-left: 4px solid #e74c3c;
+  background: #fff0f0;
+}
+
+.progress-item.progress-pending {
+  border-left: 4px solid #f39c12;
+  background: #fff8e1;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.task-id {
+  font-size: 12px;
+  color: #666;
+  font-family: monospace;
+}
+
+.progress-status {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #3498db, #2980b9);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+  min-width: 8px;
+}
+
+.progress-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.detail-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+.detail-value {
+  font-size: 12px;
+  color: #333;
+  font-weight: 600;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .progress-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  
+  .progress-details {
+    grid-template-columns: 1fr;
+  }
+  
+  .detail-row {
+    justify-content: space-between;
+  }
+}
 </style>

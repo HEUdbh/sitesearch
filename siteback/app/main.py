@@ -8,6 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from model.handleofa import run_oneforall_task
 from model.database import insert_task, update_task, get_task, get_all_tasks
 from model.result import get_task_result, get_result_summary
+from model.process import get_task_progress
 
 app = Flask(__name__)
 
@@ -91,6 +92,25 @@ def api_result():
         return jsonify(result_data)
     else:
         return jsonify(result_data), 404
+
+@app.route('/api/process', methods=['GET'])
+def api_process():
+    """获取任务进度信息"""
+    task_id = request.args.get('taskid')
+    
+    if not task_id:
+        return jsonify({
+            'success': False,
+            'error': '缺少taskid参数'
+        }), 400
+    
+    # 获取任务进度信息
+    progress_data = get_task_progress(task_id)
+    
+    if progress_data['success']:
+        return jsonify(progress_data)
+    else:
+        return jsonify(progress_data), 404
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
