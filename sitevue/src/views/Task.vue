@@ -229,16 +229,16 @@ const showAllFields = ref(false)
 const allFields = ref<string[]>([])
 const visibleFields = ref<string[]>([])
 
-// 常用字段优先级
+// 常用字段优先级（根据实际数据格式调整，排除response字段）
 const priorityFields = [
-  'url', 'addr', 'ip', 'port', 'status_code', 'alive', 'title', 'source',
-  'subdomain', 'domain', 'banner', 'header', 'response', 'service', 'protocol'
+  'url', 'subdomain', 'ip', 'port', 'status', 'alive', 'title', 'source',
+  'addr', 'asn', 'cidr', 'isp', 'org', 'cname', 'module', 'resolver',
+  'banner', 'header', 'history', 'reason', 'request', 'resolve', 'public', 'cdn'
 ]
 
-// 其他可能字段
+// 其他可能字段（排除response字段）
 const otherFields = [
-  'asn', 'cidr', 'cloud', 'country', 'isp', 'org', 'response_time',
-  'server', 'content_length', 'content_type', 'history', 'jump_urls'
+  'elapse', 'find', 'ip_times', 'cname_times', 'ttl', 'level', 'port'
 ]
 
 // 获取任务列表
@@ -310,7 +310,9 @@ const queryReport = async (task: Task) => {
   visibleFields.value = []
   
   try {
-    const response = await fetch(`http://127.0.0.1:5000/api/result?taskid=${task.id}`)
+    // 使用域名作为参数，优先使用target，如果没有则使用targets
+    const domain = task.target || task.targets || task.id
+    const response = await fetch(`http://127.0.0.1:5000/api/result?domain=${encodeURIComponent(domain)}`)
     const data = await response.json()
     
     // 解析返回的数据结构
@@ -354,12 +356,15 @@ const closeReportModal = () => {
   visibleFields.value = []
 }
 
-// 提取所有字段
+// 提取所有字段（排除response字段）
 const extractAllFields = (data: any[]) => {
   const fields = new Set<string>()
   data.forEach(item => {
     Object.keys(item).forEach(key => {
-      fields.add(key)
+      // 排除response字段
+      if (key !== 'response') {
+        fields.add(key)
+      }
     })
   })
   
@@ -381,32 +386,35 @@ const extractAllFields = (data: any[]) => {
 const getFieldDisplayName = (field: string) => {
   const fieldNames: Record<string, string> = {
     'url': 'URL地址',
-    'addr': '地址',
+    'subdomain': '子域名',
     'ip': 'IP地址',
     'port': '端口',
-    'status_code': '状态码',
+    'status': '状态码',
     'alive': '存活状态',
     'title': '页面标题',
     'source': '来源',
-    'subdomain': '子域名',
-    'domain': '域名',
-    'banner': 'Banner信息',
-    'header': '响应头',
-    'response': '响应内容',
-    'service': '服务类型',
-    'protocol': '协议',
+    'addr': '地理位置',
     'asn': 'ASN编号',
     'cidr': 'CIDR段',
-    'cloud': '云服务商',
-    'country': '国家',
     'isp': '运营商',
     'org': '组织',
-    'response_time': '响应时间',
-    'server': '服务器',
-    'content_length': '内容长度',
-    'content_type': '内容类型',
+    'cname': 'CNAME记录',
+    'module': '扫描模块',
+    'resolver': 'DNS解析器',
+    'banner': 'Banner信息',
+    'header': '响应头',
     'history': '跳转历史',
-    'jump_urls': '跳转URL'
+    'reason': '响应原因',
+    'request': '请求状态',
+    'resolve': '解析状态',
+    'public': '公网IP',
+    'cdn': 'CDN状态',
+    'elapse': '扫描耗时',
+    'find': '发现数量',
+    'ip_times': 'IP出现次数',
+    'cname_times': 'CNAME出现次数',
+    'ttl': 'TTL值',
+    'level': '域名级别'
   }
   return fieldNames[field] || field
 }
@@ -415,13 +423,18 @@ const getFieldDisplayName = (field: string) => {
 const getFieldClass = (field: string) => {
   const fieldClasses: Record<string, string> = {
     'url': 'url-col',
-    'addr': 'addr-col',
+    'subdomain': 'subdomain-col',
     'ip': 'ip-col',
     'port': 'port-col',
-    'status_code': 'status-col',
+    'status': 'status-col',
     'alive': 'alive-col',
     'title': 'title-col',
-    'source': 'source-col'
+    'source': 'source-col',
+    'addr': 'addr-col',
+    'asn': 'asn-col',
+    'cidr': 'cidr-col',
+    'isp': 'isp-col',
+    'org': 'org-col'
   }
   return fieldClasses[field] || ''
 }

@@ -1,162 +1,125 @@
-import os
 import sqlite3
-import pandas as pd
-import json
-from pathlib import Path
+import os
+from typing import Dict, List, Any, Optional
 
-DB_PATH = os.path.join(os.path.dirname(__file__), 'tasks.db')
-
-def get_task_result_path(task_id):
-    """根据任务ID获取结果文件路径"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+def get_task_result(domain: str) -> Dict[str, Any]:
+    """
+    根据域名从 OneForAll 数据库获取子域名扫描结果
     
-    cursor.execute('SELECT result FROM task_info WHERE id = ?', (task_id,))
-    row = cursor.fetchone()
-    conn.close()
+    Args:
+        domain: 目标域名，如 "baidu.com"
+        
+    Returns:
+        包含查询结果的字典，包含 success 状态和 data 数据
+    """
+    # 数据库文件路径（相对路径）
+    db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "OneForAll", "results", "result.sqlite3")
     
-    if row and row[0]:
-        return row[0]
-    return None
-
-def read_csv_result(file_path):
-    """读取CSV格式的结果文件"""
+    # 检查数据库文件是否存在
+    if not os.path.exists(db_path):
+        return {
+            "success": False,
+            "error": f"数据库文件不存在: {db_path}",
+            "data": []
+        }
+    
+    # 将域名中的点替换为下划线作为表名
+    table_name = domain.replace('.', '_')
+    
     try:
-        if not os.path.exists(file_path):
-            return None
+        # 连接数据库
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row  # 启用行工厂，方便转换为字典
+        cursor = conn.cursor()
         
-        # 读取CSV文件
-        df = pd.read_csv(file_path)
+        # 检查表是否存在
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
+        table_exists = cursor.fetchone()
         
-        # 转换为字典列表
-        results = df.to_dict('records')
+        if not table_exists:
+            return {
+                "success": False,
+                "error": f"域名 {domain} 对应的表 {table_name} 不存在",
+                "data": []
+            }
+        
+        # 查询表中的所有数据
+        cursor.execute(f"SELECT * FROM {table_name}")
+        rows = cursor.fetchall()
+        
+        # 将查询结果转换为字典列表
+        data = []
+        for row in rows:
+            # 将 sqlite3.Row 对象转换为字典
+            row_dict = dict(row)
+            data.append(row_dict)
+        
+        # 关闭连接
+        conn.close()
         
         return {
-            'format': 'csv',
-            'count': len(results),
-            'data': results
+            "success": True,
+            "domain": domain,
+            "table_name": table_name,
+            "count": len(data),
+            "data": data
+        }
+        
+    except sqlite3.Error as e:
+        return {
+            "success": False,
+            "error": f"数据库查询错误: {str(e)}",
+            "data": []
         }
     except Exception as e:
-        print(f"读取CSV文件失败: {e}")
-        return None
+        return {
+            "success": False,
+            "error": f"未知错误: {str(e)}",
+            "data": []
+        }
 
-def read_json_result(file_path):
-    """读取JSON格式的结果文件"""
+def get_available_domains() -> List[str]:
+    """
+    获取数据库中所有可用的域名（表名）
+    
+    Returns:
+        域名列表
+    """
+    db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "OneForAll", "results", "result.sqlite3")
+    
+    if not os.path.exists(db_path):
+        return []
+    
     try:
-        if not os.path.exists(file_path):
-            return None
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
         
-        with open(file_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
+        # 获取所有表名
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = cursor.fetchall()
         
-        return {
-            'format': 'json',
-            'count': len(data) if isinstance(data, list) else 1,
-            'data': data
-        }
-    except Exception as e:
-        print(f"读取JSON文件失败: {e}")
-        return None
+        # 将表名转换回域名格式（将下划线替换为点）
+        domains = [table[0].replace('_', '.') for table in tables]
+        
+        conn.close()
+        return domains
+        
+    except sqlite3.Error:
+        return []
 
-def read_txt_result(file_path):
-    """读取TXT格式的结果文件"""
-    try:
-        if not os.path.exists(file_path):
-            return None
-        
-        with open(file_path, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
-        
-        # 清理空行
-        lines = [line.strip() for line in lines if line.strip()]
-        
-        return {
-            'format': 'txt',
-            'count': len(lines),
-            'data': lines
-        }
-    except Exception as e:
-        print(f"读取TXT文件失败: {e}")
-        return None
-
-def get_task_result(task_id):
-    """获取任务结果数据"""
-    # 获取结果文件路径
-    result_path = get_task_result_path(task_id)
+# 测试函数
+if __name__ == "__main__":
+    # 测试获取可用域名
+    domains = get_available_domains()
+    print("可用域名:", domains)
     
-    if not result_path:
-        return {
-            'success': False,
-            'error': '任务结果文件路径不存在或任务未完成'
-        }
-    
-    # 检查文件是否存在
-    if not os.path.exists(result_path):
-        return {
-            'success': False,
-            'error': '结果文件不存在'
-        }
-    
-    # 根据文件扩展名选择读取方法
-    file_extension = Path(result_path).suffix.lower()
-    
-    result_data = None
-    if file_extension == '.csv':
-        result_data = read_csv_result(result_path)
-    elif file_extension == '.json':
-        result_data = read_json_result(result_path)
-    elif file_extension in ['.txt', '.log']:
-        result_data = read_txt_result(result_path)
-    else:
-        # 尝试自动检测文件格式
-        result_data = read_csv_result(result_path) or \
-                     read_json_result(result_path) or \
-                     read_txt_result(result_path)
-    
-    if result_data:
-        return {
-            'success': True,
-            'task_id': task_id,
-            **result_data
-        }
-    else:
-        return {
-            'success': False,
-            'error': '无法读取结果文件或文件格式不支持'
-        }
-
-def get_result_summary(task_id):
-    """获取结果摘要信息（不包含详细数据）"""
-    result_path = get_task_result_path(task_id)
-    
-    if not result_path or not os.path.exists(result_path):
-        return None
-    
-    file_extension = Path(result_path).suffix.lower()
-    file_size = os.path.getsize(result_path)
-    
-    # 尝试获取记录数量
-    record_count = 0
-    try:
-        if file_extension == '.csv':
-            df = pd.read_csv(result_path)
-            record_count = len(df)
-        elif file_extension == '.json':
-            with open(result_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                record_count = len(data) if isinstance(data, list) else 1
-        elif file_extension in ['.txt', '.log']:
-            with open(result_path, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-                record_count = len([line for line in lines if line.strip()])
-    except:
-        record_count = 0
-    
-    return {
-        'task_id': task_id,
-        'file_path': result_path,
-        'file_size': file_size,
-        'format': file_extension.lstrip('.'),
-        'record_count': record_count,
-        'exists': True
-    }
+    # 测试查询特定域名的数据
+    if domains:
+        test_domain = domains[0]
+        result = get_task_result(test_domain)
+        print(f"查询 {test_domain} 的结果:")
+        print(f"成功: {result['success']}")
+        print(f"数据条数: {result.get('count', 0)}")
+        if result['success'] and result['data']:
+            print("第一条数据示例:")
+            print(result['data'][0])

@@ -7,7 +7,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from model.handleofa import run_oneforall_task
 from model.database import insert_task, update_task, get_task, get_all_tasks
-from model.result import get_task_result, get_result_summary
+from model.result import get_task_result
 from model.process import get_task_progress
 from model.deleters import start_cleanup_service, stop_cleanup_service, get_cleanup_status, manual_cleanup
 
@@ -78,16 +78,16 @@ def api_task():
 @app.route('/api/result', methods=['GET'])
 def api_result():
     """获取任务结果数据"""
-    task_id = request.args.get('taskid')
+    domain = request.args.get('domain')
     
-    if not task_id:
+    if not domain:
         return jsonify({
             'success': False,
-            'error': '缺少taskid参数'
+            'error': '缺少domain参数'
         }), 400
     
     # 获取任务结果
-    result_data = get_task_result(task_id)
+    result_data = get_task_result(domain)
     
     if result_data['success']:
         return jsonify(result_data)
