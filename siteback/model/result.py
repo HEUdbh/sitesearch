@@ -13,7 +13,7 @@ def get_task_result(domain: str) -> Dict[str, Any]:
         包含查询结果的字典，包含 success 状态和 data 数据
     """
     # 数据库文件路径（相对路径）
-    db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "OneForAll", "results", "result.sqlite3")
+    db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "tools", "OneForAll", "results", "result.sqlite3")
     
     # 检查数据库文件是否存在
     if not os.path.exists(db_path):
@@ -85,7 +85,7 @@ def get_available_domains() -> List[str]:
     Returns:
         域名列表
     """
-    db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "OneForAll", "results", "result.sqlite3")
+    db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "tools", "OneForAll", "results", "result.sqlite3")
     
     if not os.path.exists(db_path):
         return []

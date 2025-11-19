@@ -989,6 +989,22 @@ th {
   min-width: 100px;
 }
 
+/* 运营商字段样式 - 确保横向排列 */
+.isp-col {
+  min-width: 120px;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.asn-col, .cidr-col, .org-col {
+  min-width: 100px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* 状态样式 */
 .alive-true {
   color: #28a745;

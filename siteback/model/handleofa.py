@@ -1,12 +1,13 @@
 import sys
 import os
 
-# 添加 OneForAll 的绝对路径到 sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../OneForAll')))
+# 添加 OneForAll 的相对路径到 sys.path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'tools', 'OneForAll'))
 
-# 导入 OneForAll 和 utils 模块
-from OneForAll.oneforall import OneForAll
-from OneForAll.common import utils
+# 导入 OneForAll 类
+from oneforall import OneForAll
+# 导入 utils 模块
+from common import utils
 
 def run_oneforall_task(task_id, params, tasks_dict):
     try:
@@ -63,7 +64,7 @@ def run_oneforall_task(task_id, params, tasks_dict):
             results.append(result)
         
         # 获取结果文件路径
-        from OneForAll.config import settings
+        from config import settings
         import os
         
         # 生成结果文件路径 - 使用OneForAll的导出逻辑

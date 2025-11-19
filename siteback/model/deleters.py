@@ -174,7 +174,7 @@ def _auto_init():
     try:
         # 获取OneForAll结果目录
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        results_dir = os.path.abspath(os.path.join(current_dir, '../OneForAll/results'))
+        results_dir = os.path.abspath(os.path.join(current_dir, '../tools/OneForAll/results'))
         
         init_cleaner(results_dir)
         logger.info(f"自动初始化清理器，结果目录: {results_dir}")

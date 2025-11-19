@@ -113,39 +113,6 @@ def api_process():
     else:
         return jsonify(progress_data), 404
 
-@app.route('/api/cleanup/status', methods=['GET'])
-def api_cleanup_status():
-    """获取清理服务状态"""
-    status = get_cleanup_status()
-    return jsonify(status)
-
-@app.route('/api/cleanup/start', methods=['POST'])
-def api_cleanup_start():
-    """启动清理服务"""
-    try:
-        start_cleanup_service()
-        return jsonify({'success': True, 'message': '清理服务已启动'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/cleanup/stop', methods=['POST'])
-def api_cleanup_stop():
-    """停止清理服务"""
-    try:
-        stop_cleanup_service()
-        return jsonify({'success': True, 'message': '清理服务已停止'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/cleanup/manual', methods=['POST'])
-def api_cleanup_manual():
-    """手动执行一次清理"""
-    try:
-        manual_cleanup()
-        return jsonify({'success': True, 'message': '手动清理已完成'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
 if __name__ == '__main__':
     # 启动应用时自动启动清理服务
     print("启动扫描结果文件清理服务...")

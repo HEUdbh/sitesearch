@@ -1,0 +1,1 @@
+{"name":"www.bmf.qzz.io.","type":"A","class":"IN","status":"NOERROR","data":{"answers":[{"ttl":300,"type":"CNAME","class":"IN","name":"www.bmf.qzz.io.","data":"ghs.googlehosted.com."},{"ttl":163,"type":"A","class":"IN","name":"ghs.googlehosted.com.","data":"142.250.198.83"}]},"resolver":"84.200.69.80:53"}
